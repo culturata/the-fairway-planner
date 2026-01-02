@@ -93,7 +93,7 @@ export default async function TripPage({
                 <p className="text-gray-500">No itinerary items yet</p>
               ) : (
                 <div className="space-y-6">
-                  {Object.entries(itineraryByDate).map(([date, items]) => (
+                  {(Object.entries(itineraryByDate) as [string, typeof trip.itineraryItems][]).map(([date, items]) => (
                     <div key={date}>
                       <h3 className="font-semibold text-lg mb-2">{date}</h3>
                       <div className="space-y-2">
