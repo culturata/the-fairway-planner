@@ -78,6 +78,7 @@ model Event {
   competitions   Competition[]
   teams          Team[]
   channels       Channel[]
+  leagueSeasons  LeagueSeason[]
 
   @@index([organizationId, status])
   @@index([organizationId, eventType])
@@ -447,4 +448,42 @@ model Notification {
 
   @@index([userId, read, createdAt])
   @@map("notifications")
+}
+
+// League seasons for recurring league events
+model LeagueSeason {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String // "Spring 2024", "Season 1"
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  config    Json? // Points system configuration
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event     Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  standings LeagueStanding[]
+
+  @@map("league_seasons")
+}
+
+// League standings for tracking player performance across a season
+model LeagueStanding {
+  id            String   @id @default(cuid())
+  seasonId      String
+  eventMemberId String
+  totalPoints   Int      @default(0)
+  roundsPlayed  Int      @default(0)
+  position      Int?
+  stats         Json? // Detailed stats (avg score, best round, etc.)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  season      LeagueSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  eventMember EventMember  @relation(fields: [eventMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, eventMemberId])
+  @@index([seasonId, totalPoints])
+  @@map("league_standings")
 }
