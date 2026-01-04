@@ -30,11 +30,11 @@ export async function PATCH(
       );
     }
 
-    // Update or create trip member
-    const tripMember = await prisma.tripMember.upsert({
+    // Update or create event member (tripId is actually eventId)
+    const eventMember = await prisma.eventMember.upsert({
       where: {
-        tripId_userProfileId: {
-          tripId,
+        eventId_userProfileId: {
+          eventId: tripId,
           userProfileId: userProfile.id,
         },
       },
@@ -42,13 +42,14 @@ export async function PATCH(
         rsvpStatus: data.rsvpStatus,
       },
       create: {
-        tripId,
+        eventId: tripId,
         userProfileId: userProfile.id,
         rsvpStatus: data.rsvpStatus,
       },
     });
 
-    return NextResponse.json({ tripMember });
+    // Return as tripMember for backward compatibility
+    return NextResponse.json({ tripMember: eventMember });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get cost items
-    const costItems = await prisma.tripCostItem.findMany({
+    const costItems = await prisma.eventCostItem.findMany({
       where: { id: { in: data.costItemIds } },
     });
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         prisma.payment.create({
           data: {
             userProfileId: userProfile.id,
-            tripCostItemId: item.id,
+            eventCostItemId: item.id,
             amountCents: item.amountCents,
             status: "PENDING",
           },

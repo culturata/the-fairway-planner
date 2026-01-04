@@ -21,7 +21,7 @@ export async function POST(
 
     const announcement = await prisma.announcement.create({
       data: {
-        tripId,
+        eventId: tripId, // tripId is actually eventId
         title: data.title,
         message: data.message,
       },

@@ -1,19 +1,12 @@
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { formatDate, formatDateTime } from "@/lib/utils";
-import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
 
-export default async function TripPage({
+export default async function TripRedirectPage({
   params,
 }: {
   params: Promise<{ tripId: string }>;
 }) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
   const { tripId } = await params;
+<<<<<<< Updated upstream
 
   const trip = await prisma.trip.findUnique({
     where: { id: tripId },
@@ -211,4 +204,7 @@ export default async function TripPage({
       </main>
     </div>
   );
+=======
+  redirect(`/e/${tripId}`);
+>>>>>>> Stashed changes
 }

@@ -13,7 +13,7 @@ export async function POST(
     const scorecard = await prisma.scorecard.findUnique({
       where: { id: scorecardId },
       include: {
-        tripMember: {
+        eventMember: {
           include: {
             userProfile: true,
           },
@@ -28,7 +28,7 @@ export async function POST(
       );
     }
 
-    if (scorecard.tripMember.userProfile.clerkUserId !== userId) {
+    if (scorecard.eventMember.userProfile.clerkUserId !== userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }

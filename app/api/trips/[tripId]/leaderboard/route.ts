@@ -10,13 +10,13 @@ export async function GET(
     await requireUserId();
     const { tripId } = await params;
 
-    // Get all rounds for the trip
+    // Get all rounds for the event (tripId is actually eventId)
     const rounds = await prisma.round.findMany({
-      where: { tripId },
+      where: { eventId: tripId },
       include: {
         scorecards: {
           include: {
-            tripMember: {
+            eventMember: {
               include: {
                 userProfile: true,
               },
@@ -40,12 +40,12 @@ export async function GET(
 
     for (const round of rounds) {
       for (const scorecard of round.scorecards) {
-        const key = scorecard.tripMember.userProfileId;
+        const key = scorecard.eventMember.userProfileId;
         const existing = playerTotals.get(key) || {
           userProfileId: key,
           playerName:
-            scorecard.tripMember.userProfile.name ||
-            scorecard.tripMember.userProfile.email ||
+            scorecard.eventMember.userProfile.name ||
+            scorecard.eventMember.userProfile.email ||
             "Unknown",
           grossTotal: 0,
           netTotal: 0,

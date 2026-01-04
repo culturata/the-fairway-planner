@@ -20,15 +20,29 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createTripSchema.parse(body);
 
-    // Check if trip already exists for this org
-    let trip = await prisma.trip.findUnique({
+    // Get or create organization
+    let organization = await prisma.organization.findUnique({
       where: { clerkOrgId: orgId },
     });
 
-    if (trip) {
-      // Update existing trip
-      trip = await prisma.trip.update({
-        where: { clerkOrgId: orgId },
+    if (!organization) {
+      organization = await prisma.organization.create({
+        data: { clerkOrgId: orgId },
+      });
+    }
+
+    // Check if a trip event already exists for this org (maintain MVP behavior)
+    let event = await prisma.event.findFirst({
+      where: {
+        organizationId: organization.id,
+        eventType: "TRIP",
+      },
+    });
+
+    if (event) {
+      // Update existing trip event
+      event = await prisma.event.update({
+        where: { id: event.id },
         data: {
           name: data.name,
           location: data.location,
@@ -39,16 +53,18 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // Create new trip
-      trip = await prisma.trip.create({
+      // Create new trip event
+      event = await prisma.event.create({
         data: {
-          clerkOrgId: orgId,
+          organizationId: organization.id,
+          eventType: "TRIP",
           name: data.name,
           location: data.location,
           startDate: new Date(data.startDate),
           endDate: new Date(data.endDate),
           handicapPct: data.handicapPct,
           handicapCap: data.handicapCap,
+          scoringFormat: "STROKE_PLAY",
         },
       });
     }
@@ -64,27 +80,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Ensure user is a member of the trip
-    const existingMember = await prisma.tripMember.findUnique({
+    // Ensure user is a member of the event
+    const existingMember = await prisma.eventMember.findUnique({
       where: {
-        tripId_userProfileId: {
-          tripId: trip.id,
+        eventId_userProfileId: {
+          eventId: event.id,
           userProfileId: userProfile.id,
         },
       },
     });
 
     if (!existingMember) {
-      await prisma.tripMember.create({
+      await prisma.eventMember.create({
         data: {
-          tripId: trip.id,
+          eventId: event.id,
           userProfileId: userProfile.id,
           rsvpStatus: "GOING",
         },
       });
     }
 
-    return NextResponse.json({ trip });
+    // Return as 'trip' for backward compatibility
+    return NextResponse.json({ trip: event });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -104,10 +121,23 @@ export async function GET() {
   try {
     const orgId = await requireOrgId();
 
-    const trip = await prisma.trip.findUnique({
+    // Get organization
+    const organization = await prisma.organization.findUnique({
       where: { clerkOrgId: orgId },
+    });
+
+    if (!organization) {
+      return NextResponse.json({ trip: null });
+    }
+
+    // Get the first TRIP event for this organization (maintain MVP behavior)
+    const event = await prisma.event.findFirst({
+      where: {
+        organizationId: organization.id,
+        eventType: "TRIP",
+      },
       include: {
-        members: {
+        eventMembers: {
           include: {
             userProfile: true,
           },
@@ -126,9 +156,15 @@ export async function GET() {
       },
     });
 
-    if (!trip) {
+    if (!event) {
       return NextResponse.json({ trip: null });
     }
+
+    // Map eventMembers to members for backward compatibility
+    const trip = {
+      ...event,
+      members: event.eventMembers,
+    };
 
     return NextResponse.json({ trip });
   } catch (error) {

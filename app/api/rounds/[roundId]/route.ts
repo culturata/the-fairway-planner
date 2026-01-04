@@ -13,12 +13,12 @@ export async function GET(
     const round = await prisma.round.findUnique({
       where: { id: roundId },
       include: {
-        trip: true,
+        event: true,
         teeGroups: {
           include: {
             members: {
               include: {
-                tripMember: {
+                eventMember: {
                   include: {
                     userProfile: true,
                   },
@@ -29,7 +29,7 @@ export async function GET(
         },
         scorecards: {
           include: {
-            tripMember: {
+            eventMember: {
               include: {
                 userProfile: true,
               },

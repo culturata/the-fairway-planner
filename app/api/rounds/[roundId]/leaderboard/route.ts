@@ -13,7 +13,7 @@ export async function GET(
     const scorecards = await prisma.scorecard.findMany({
       where: { roundId },
       include: {
-        tripMember: {
+        eventMember: {
           include: {
             userProfile: true,
           },
@@ -31,7 +31,7 @@ export async function GET(
       .sort((a, b) => (a.grossTotal || 0) - (b.grossTotal || 0))
       .map((s, index) => ({
         position: index + 1,
-        playerName: s.tripMember.userProfile.name || s.tripMember.userProfile.email || "Unknown",
+        playerName: s.eventMember.userProfile.name || s.eventMember.userProfile.email || "Unknown",
         score: s.grossTotal,
         status: s.status,
       }));
@@ -42,9 +42,9 @@ export async function GET(
       .sort((a, b) => (a.netTotal || 0) - (b.netTotal || 0))
       .map((s, index) => ({
         position: index + 1,
-        playerName: s.tripMember.userProfile.name || s.tripMember.userProfile.email || "Unknown",
+        playerName: s.eventMember.userProfile.name || s.eventMember.userProfile.email || "Unknown",
         score: s.netTotal,
-        handicap: s.tripMember.handicap,
+        handicap: s.eventMember.handicap,
         status: s.status,
       }));
 

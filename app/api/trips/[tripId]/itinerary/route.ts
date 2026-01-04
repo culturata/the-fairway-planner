@@ -25,7 +25,7 @@ export async function POST(
 
     const item = await prisma.itineraryItem.create({
       data: {
-        tripId,
+        eventId: tripId, // tripId is actually eventId
         type: data.type,
         title: data.title,
         startsAt: new Date(data.startsAt),
@@ -60,7 +60,7 @@ export async function GET(
     const { tripId } = await params;
 
     const items = await prisma.itineraryItem.findMany({
-      where: { tripId },
+      where: { eventId: tripId }, // tripId is actually eventId
       orderBy: { startsAt: "asc" },
     });
 

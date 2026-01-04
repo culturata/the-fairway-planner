@@ -19,59 +19,95 @@ model UserProfile {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tripMembers TripMember[]
-  payments    Payment[]
+  eventMembers     EventMember[]
+  payments         Payment[]
+  messages         Message[]
+  messageReactions MessageReaction[]
+  notifications    Notification[]
 
   @@map("user_profiles")
 }
 
-// Trip entity (1:1 with Clerk Organization for MVP)
-model Trip {
-  id              String    @id @default(cuid())
-  clerkOrgId      String    @unique
-  name            String
-  location        String?
-  startDate       DateTime
-  endDate         DateTime
-  status          String    @default("DRAFT") // DRAFT, ACTIVE, COMPLETED
-  handicapPct     Int       @default(100) // Handicap percentage (e.g., 100 = 100%)
-  handicapCap     Int? // Optional handicap cap
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+// Organization entity (1:1 with Clerk Organization)
+model Organization {
+  id         String   @id @default(cuid())
+  clerkOrgId String   @unique
+  name       String?
+  settings   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  members         TripMember[]
-  itineraryItems  ItineraryItem[]
-  rounds          Round[]
-  costItems       TripCostItem[]
-  announcements   Announcement[]
+  events Event[]
 
-  @@map("trips")
+  @@map("organizations")
 }
 
-// Trip membership with RSVP and handicap
-model TripMember {
-  id              String   @id @default(cuid())
-  tripId          String
-  userProfileId   String
-  rsvpStatus      String   @default("INVITED") // INVITED, GOING, MAYBE, DECLINED
-  handicap        Float?   // Manual handicap for this trip
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+// Event entity (Trips, Outings, Leagues, Tournaments)
+model Event {
+  id             String   @id @default(cuid())
+  organizationId String
+  eventType      String // TRIP, OUTING, LEAGUE, TOURNAMENT
+  name           String
+  location       String?
+  startDate      DateTime
+  endDate        DateTime
+  status         String   @default("DRAFT") // DRAFT, ACTIVE, COMPLETED, CANCELLED
+  handicapPct    Int      @default(100) // Handicap percentage (e.g., 100 = 100%)
+  handicapCap    Int? // Optional handicap cap
 
-  trip            Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  userProfile     UserProfile  @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  // Scoring configuration
+  scoringFormat String @default("STROKE_PLAY") // STROKE_PLAY, STABLEFORD, MATCH_PLAY, etc.
+  scoringConfig Json?
+
+  // League-specific fields
+  isRecurring     Boolean   @default(false)
+  recurrenceRule  String?
+  seasonStartDate DateTime?
+  seasonEndDate   DateTime?
+  leagueSettings  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  eventMembers   EventMember[]
+  itineraryItems ItineraryItem[]
+  rounds         Round[]
+  costItems      EventCostItem[]
+  announcements  Announcement[]
+  competitions   Competition[]
+  teams          Team[]
+  channels       Channel[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, eventType])
+  @@map("events")
+}
+
+// Event membership with RSVP and handicap
+model EventMember {
+  id            String   @id @default(cuid())
+  eventId       String
+  userProfileId String
+  rsvpStatus    String   @default("INVITED") // INVITED, GOING, MAYBE, DECLINED
+  handicap      Float? // Manual handicap for this event
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  event           Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userProfile     UserProfile      @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
   scorecards      Scorecard[]
   teeGroupMembers TeeGroupMember[]
 
-  @@unique([tripId, userProfileId])
-  @@map("trip_members")
+  @@unique([eventId, userProfileId])
+  @@map("event_members")
 }
 
 // Itinerary items (rounds, lodging, dinner, activities, etc.)
 model ItineraryItem {
   id        String    @id @default(cuid())
-  tripId    String
-  type      String    // ROUND, LODGING, DINNER, ACTIVITY, TRAVEL, NOTE
+  eventId   String
+  type      String // ROUND, LODGING, DINNER, ACTIVITY, TRAVEL, NOTE
   title     String
   startsAt  DateTime
   endsAt    DateTime?
@@ -80,75 +116,148 @@ model ItineraryItem {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("itinerary_items")
 }
 
+// Course entity
+model Course {
+  id        String   @id @default(cuid())
+  name      String
+  city      String?
+  state     String?
+  country   String   @default("USA")
+  holes     Int      @default(18)
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tees   Tee[]
+  rounds Round[]
+
+  @@index([name, state])
+  @@map("courses")
+}
+
+// Tee box entity (e.g., Blue, White, Red)
+model Tee {
+  id           String   @id @default(cuid())
+  courseId     String
+  name         String // "Blue", "White", "Red", "Gold"
+  gender       String? // "M", "F", "A" (All)
+  courseRating Float? // e.g., 72.4
+  slopeRating  Int? // e.g., 135
+  totalYardage Int?
+  par          Int      @default(72)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  holes  Hole[]
+  rounds Round[]
+
+  @@unique([courseId, name])
+  @@map("tees")
+}
+
+// Individual hole data
+model Hole {
+  id         String   @id @default(cuid())
+  teeId      String
+  holeNumber Int // 1-18
+  par        Int
+  handicap   Int // Stroke index 1-18
+  yardage    Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tee Tee @relation(fields: [teeId], references: [id], onDelete: Cascade)
+
+  @@unique([teeId, holeNumber])
+  @@map("holes")
+}
+
 // Round entity
 model Round {
-  id         String    @id @default(cuid())
-  tripId     String
-  courseName String
-  teesName   String?
-  startsAt   DateTime
-  notes      String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            String   @id @default(cuid())
+  eventId       String
+  courseId      String? // Link to course database
+  teeId         String? // Specific tee being played
+  courseName    String // Keep for backward compatibility
+  teesName      String?
+  startsAt      DateTime
+  notes         String?
+  scoringFormat String? // Override event's default format for this round
+  scoringConfig Json? // Format-specific configuration
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  trip       Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  course     Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  tee        Tee?        @relation(fields: [teeId], references: [id], onDelete: SetNull)
   teeGroups  TeeGroup[]
   scorecards Scorecard[]
+  channels   Channel[]
 
   @@map("rounds")
 }
 
 // Tee groups (pairings)
 model TeeGroup {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   roundId      String
-  label        String?  // e.g., "Group A", "Tee Time 1"
+  label        String? // e.g., "Group A", "Tee Time 1"
   teeTime      DateTime?
-  startingHole Int?     // 1-18
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  startingHole Int? // 1-18
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  round        Round             @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  members      TeeGroupMember[]
+  round   Round            @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  members TeeGroupMember[]
 
   @@map("tee_groups")
 }
 
 // Tee group members
 model TeeGroupMember {
-  id           String   @id @default(cuid())
-  teeGroupId   String
-  tripMemberId String
-  createdAt    DateTime @default(now())
+  id            String   @id @default(cuid())
+  teeGroupId    String
+  eventMemberId String
+  createdAt     DateTime @default(now())
 
-  teeGroup     TeeGroup   @relation(fields: [teeGroupId], references: [id], onDelete: Cascade)
-  tripMember   TripMember @relation(fields: [tripMemberId], references: [id], onDelete: Cascade)
+  teeGroup    TeeGroup    @relation(fields: [teeGroupId], references: [id], onDelete: Cascade)
+  eventMember EventMember @relation(fields: [eventMemberId], references: [id], onDelete: Cascade)
 
-  @@unique([teeGroupId, tripMemberId])
+  @@unique([teeGroupId, eventMemberId])
   @@map("tee_group_members")
 }
 
 // Scorecard for a player in a round
 model Scorecard {
-  id           String   @id @default(cuid())
-  roundId      String
-  tripMemberId String
-  status       String   @default("IN_PROGRESS") // IN_PROGRESS, SUBMITTED, LOCKED
-  grossTotal   Int?
-  netTotal     Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String @id @default(cuid())
+  roundId       String
+  eventMemberId String
+  status        String @default("IN_PROGRESS") // IN_PROGRESS, SUBMITTED, LOCKED
+  grossTotal    Int?
+  netTotal      Int?
 
-  round        Round      @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  tripMember   TripMember @relation(fields: [tripMemberId], references: [id], onDelete: Cascade)
-  holeScores   HoleScore[]
+  // Format-specific results
+  stablefordPoints Int? // Total Stableford points
+  matchPlayResult  String? // Match play result (e.g., "3&2", "AS")
+  holesWon         Int? // For match play
+  holesLost        Int? // For match play
+  holesTied        Int? // For match play
+  results          Json? // Generic storage for complex format data
 
-  @@unique([roundId, tripMemberId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  round       Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  eventMember EventMember @relation(fields: [eventMemberId], references: [id], onDelete: Cascade)
+  holeScores  HoleScore[]
+
+  @@unique([roundId, eventMemberId])
   @@map("scorecards")
 }
 
@@ -156,47 +265,47 @@ model Scorecard {
 model HoleScore {
   id          String   @id @default(cuid())
   scorecardId String
-  holeNumber  Int      // 1-18
+  holeNumber  Int // 1-18
   strokes     Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  scorecard   Scorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
+  scorecard Scorecard @relation(fields: [scorecardId], references: [id], onDelete: Cascade)
 
   @@unique([scorecardId, holeNumber])
   @@map("hole_scores")
 }
 
-// Trip cost items (deposit, lodging, etc.)
-model TripCostItem {
+// Event cost items (deposit, lodging, etc.)
+model EventCostItem {
   id          String   @id @default(cuid())
-  tripId      String
+  eventId     String
   name        String
   amountCents Int
   required    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  trip        Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  payments    Payment[]
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  payments Payment[]
 
-  @@map("trip_cost_items")
+  @@map("event_cost_items")
 }
 
 // Payment records
 model Payment {
-  id                     String   @id @default(cuid())
-  userProfileId          String
-  tripCostItemId         String
-  status                 String   @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
-  amountCents            Int
-  stripeSessionId        String?  @unique
-  stripePaymentIntentId  String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  userProfileId         String
+  eventCostItemId       String
+  status                String   @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
+  amountCents           Int
+  stripeSessionId       String?  @unique
+  stripePaymentIntentId String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  userProfile            UserProfile  @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
-  tripCostItem           TripCostItem @relation(fields: [tripCostItemId], references: [id], onDelete: Cascade)
+  userProfile   UserProfile   @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  eventCostItem EventCostItem @relation(fields: [eventCostItemId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
@@ -204,13 +313,138 @@ model Payment {
 // Announcements
 model Announcement {
   id        String   @id @default(cuid())
-  tripId    String
+  eventId   String
   title     String?
   message   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("announcements")
+}
+
+// Competitions (Skins, CTP, Long Drive, Flights)
+model Competition {
+  id          String   @id @default(cuid())
+  eventId     String
+  roundIds    String[] // Which rounds this competition applies to
+  type        String // SKINS, CLOSEST_TO_PIN, LONG_DRIVE, FLIGHT
+  name        String
+  description String?
+  config      Json? // Type-specific configuration
+  status      String   @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event   Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  results CompetitionResult[]
+
+  @@map("competitions")
+}
+
+// Competition results
+model CompetitionResult {
+  id              String   @id @default(cuid())
+  competitionId   String
+  participantId   String // EventMember ID or Team ID
+  participantType String // INDIVIDUAL, TEAM
+  result          Json // Flexible structure for different competition types
+  position        Int?
+  prize           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  @@map("competition_results")
+}
+
+// Teams for team competitions
+model Team {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String
+  memberIds String[] // EventMember IDs
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  channels Channel[]
+
+  @@map("teams")
+}
+
+// Messaging channels
+model Channel {
+  id        String   @id @default(cuid())
+  type      String // EVENT, ROUND, TEAM, DIRECT
+  name      String?
+  eventId   String?
+  roundId   String?
+  teamId    String?
+  memberIds String[] // UserProfile IDs with access
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event    Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  round    Round?    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  team     Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([eventId])
+  @@index([roundId])
+  @@map("channels")
+}
+
+// Messages in channels
+model Message {
+  id        String   @id @default(cuid())
+  channelId String
+  senderId  String // UserProfile ID
+  content   String   @db.Text
+  type      String   @default("TEXT") // TEXT, SYSTEM, IMAGE
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channel   Channel           @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  sender    UserProfile       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  reactions MessageReaction[]
+
+  @@index([channelId, createdAt])
+  @@map("messages")
+}
+
+// Message reactions
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String // UserProfile ID
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("message_reactions")
+}
+
+// Notifications
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String // UserProfile ID
+  type      String // MESSAGE, SCORE_UPDATE, PAYMENT, ANNOUNCEMENT, COMPETITION
+  title     String
+  message   String
+  data      Json?
+  read      Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now())
+
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+  @@map("notifications")
 }

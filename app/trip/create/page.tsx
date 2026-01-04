@@ -11,6 +11,7 @@ export default function CreateTripPage() {
   const [error, setError] = useState("");
 
   const [formData, setFormData] = useState({
+    eventType: "TRIP",
     name: "",
     location: "",
     startDate: "",
@@ -29,6 +30,7 @@ export default function CreateTripPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          eventType: formData.eventType,
           name: formData.name,
           location: formData.location || undefined,
           startDate: new Date(formData.startDate).toISOString(),
@@ -43,7 +45,7 @@ export default function CreateTripPage() {
       }
 
       const data = await response.json();
-      router.push(`/t/${data.trip.id}`);
+      router.push(`/e/${data.trip.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create trip");
     } finally {
@@ -63,7 +65,7 @@ export default function CreateTripPage() {
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-2xl mx-auto px-4">
         <div className="bg-white shadow rounded-lg p-8">
-          <h1 className="text-2xl font-bold mb-6">Create Golf Trip</h1>
+          <h1 className="text-2xl font-bold mb-6">Create Golf Event</h1>
 
           {error && (
             <div className="bg-red-50 text-red-600 p-4 rounded mb-4">
@@ -74,7 +76,24 @@ export default function CreateTripPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Trip Name *
+                Event Type *
+              </label>
+              <select
+                required
+                value={formData.eventType}
+                onChange={(e) => setFormData({ ...formData, eventType: e.target.value })}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="TRIP">Trip</option>
+                <option value="OUTING">Outing</option>
+                <option value="LEAGUE">League</option>
+                <option value="TOURNAMENT">Tournament</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Event Name *
               </label>
               <input
                 type="text"
@@ -82,7 +101,7 @@ export default function CreateTripPage() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Pebble Beach Weekend"
+                placeholder="e.g., Pebble Beach Weekend, Summer League 2024"
               />
             </div>
 
@@ -164,7 +183,7 @@ export default function CreateTripPage() {
                 disabled={loading}
                 className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? "Creating..." : "Create Trip"}
+                {loading ? "Creating..." : "Create Event"}
               </button>
               <button
                 type="button"

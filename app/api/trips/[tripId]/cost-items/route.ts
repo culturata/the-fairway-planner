@@ -20,9 +20,9 @@ export async function POST(
     const body = await request.json();
     const data = createCostItemSchema.parse(body);
 
-    const costItem = await prisma.tripCostItem.create({
+    const costItem = await prisma.eventCostItem.create({
       data: {
-        tripId,
+        eventId: tripId, // tripId is actually eventId
         name: data.name,
         amountCents: data.amountCents,
         required: data.required,
@@ -53,8 +53,8 @@ export async function GET(
     await requireUserId();
     const { tripId } = await params;
 
-    const costItems = await prisma.tripCostItem.findMany({
-      where: { tripId },
+    const costItems = await prisma.eventCostItem.findMany({
+      where: { eventId: tripId }, // tripId is actually eventId
       include: {
         payments: {
           include: {

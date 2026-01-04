@@ -1,5 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
+<<<<<<< Updated upstream
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -114,4 +115,13 @@ export default function TripAdminPage() {
       </div>
     </div>
   );
+=======
+export default async function TripAdminRedirectPage({
+  params,
+}: {
+  params: Promise<{ tripId: string }>;
+}) {
+  const { tripId } = await params;
+  redirect(`/e/${tripId}/admin`);
+>>>>>>> Stashed changes
 }

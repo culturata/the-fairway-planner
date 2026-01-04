@@ -25,15 +25,15 @@ export async function POST(request: NextRequest) {
         teeTime: data.teeTime ? new Date(data.teeTime) : null,
         startingHole: data.startingHole,
         members: {
-          create: data.memberIds.map((tripMemberId) => ({
-            tripMemberId,
+          create: data.memberIds.map((eventMemberId) => ({
+            eventMemberId,
           })),
         },
       },
       include: {
         members: {
           include: {
-            tripMember: {
+            eventMember: {
               include: {
                 userProfile: true,
               },

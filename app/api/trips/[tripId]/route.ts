@@ -10,10 +10,11 @@ export async function GET(
     await requireUserId();
     const { tripId } = await params;
 
-    const trip = await prisma.trip.findUnique({
+    // tripId is now actually an eventId (backward compatibility)
+    const event = await prisma.event.findUnique({
       where: { id: tripId },
       include: {
-        members: {
+        eventMembers: {
           include: {
             userProfile: true,
           },
@@ -28,7 +29,7 @@ export async function GET(
               include: {
                 members: {
                   include: {
-                    tripMember: {
+                    eventMember: {
                       include: {
                         userProfile: true,
                       },
@@ -46,9 +47,15 @@ export async function GET(
       },
     });
 
-    if (!trip) {
+    if (!event) {
       return NextResponse.json({ error: "Trip not found" }, { status: 404 });
     }
+
+    // Map to old structure for backward compatibility
+    const trip = {
+      ...event,
+      members: event.eventMembers,
+    };
 
     return NextResponse.json({ trip });
   } catch (error) {
