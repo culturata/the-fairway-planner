@@ -99,6 +99,7 @@ model EventMember {
   userProfile     UserProfile      @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
   scorecards      Scorecard[]
   teeGroupMembers TeeGroupMember[]
+  leagueStandings LeagueStanding[]
 
   @@unique([eventId, userProfileId])
   @@map("event_members")
