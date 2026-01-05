@@ -37,3 +37,14 @@ export async function requireUserId(): Promise<string> {
   }
   return userId;
 }
+
+export async function canManageEvent(eventId: string): Promise<boolean> {
+  // For now, anyone who is an organizer can manage events
+  return isOrganizer();
+}
+
+export async function canViewEvent(eventId: string): Promise<boolean> {
+  // For now, anyone authenticated can view events in their org
+  const userId = await getUserId();
+  return userId !== null;
+}

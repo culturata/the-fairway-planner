@@ -15,7 +15,10 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>{children}</body>
+        <body>
+          <div className="grain-overlay"></div>
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );
